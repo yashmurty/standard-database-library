@@ -6,6 +6,7 @@
 - A. The missing things that I could notice are: 
   - 1. The library does not account for downtime of read-replicas.
   - 2. The Ping and PingContext function panic instead of returning the error.
+  - 3. The library does not take the edge case of all read-replicas being down.
 
 - Q. Is the library thread-safe?
 - A. No. The db.count variable is not a thread-safe variable. We could use atomic operations to make it thread-safe.
@@ -33,3 +34,9 @@ It will maintain a list of offline read-replicas in offlineReadReplica.
 It will be triggered every X seconds.
 As a later TODO, we can also trigger this function when there is a connection timeout error from 
 any of the read-replicas.
+
+We return the master db if all read-replicas are down.
+
+Note: 
+  - 1. The Ping, Close, SetConnMaxLifetime, etc. functions call all the read-replicas even if they are down.
+    I have not modified these to use the healthy read-replicas only. I have only modified the `readReplicaRoundRobin` function to consider downtime based on health-check.

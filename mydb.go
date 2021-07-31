@@ -4,30 +4,52 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"time"
 )
 
 type DB struct {
-	master       *sql.DB
-	readreplicas []*sql.DB
-	count        int64
+	master         *sql.DB
+	readreplicas   []*sql.DB
+	count          int64
+	replicaManager ReplicaManager
 }
 
 func New(master *sql.DB, readreplicas ...*sql.DB) *DB {
-	return &DB{
+
+	db := &DB{
 		master:       master,
 		readreplicas: readreplicas,
 	}
+
+	fmt.Println("readreplicas : ", readreplicas)
+
+	// NOTE:  I wanted to pass this as a parameter to the constructor, but the interface_test.go file
+	// has an explicit message that it should not be modified. I might have misunderstood the restriction,
+	// but for now I will go ahead with this hard-coded value defined here.
+	healthCheckIntervalInSeconds := 1
+	db.replicaManager.Init(readreplicas, healthCheckIntervalInSeconds)
+
+	return db
 }
 
 func (db *DB) readReplicaRoundRobin() *sql.DB {
 	// Increment the counter atomically to keep it thread-safe.
 	atomic.AddInt64(&db.count, 1)
-	return db.readreplicas[int(db.count)%len(db.readreplicas)]
+
+	// Get all the healthy read-replicas from our thread-safe replica manager.
+	healthyReadReplicas := db.replicaManager.GetHealthyReplicas()
+	// In case all the read-replicas are down, return the master.
+	if len(healthyReadReplicas) == 0 {
+		return db.master
+	}
+
+	// return db.readreplicas[int(db.count)%len(db.readreplicas)]
+	return healthyReadReplicas[int(db.count)%len(healthyReadReplicas)]
 }
 
+// Ping verifies if a connection to each database is still alive,
+// establishing a connection if necessary.
 func (db *DB) Ping() error {
 	if err := db.master.Ping(); err != nil {
 		return err
@@ -42,6 +64,8 @@ func (db *DB) Ping() error {
 	return nil
 }
 
+// PingContext verifies if a connection to each database is still
+// alive, establishing a connection if necessary.
 func (db *DB) PingContext(ctx context.Context) error {
 	if err := db.master.PingContext(ctx); err != nil {
 		return err
@@ -123,47 +147,4 @@ func (db *DB) SetMaxOpenConns(n int) {
 	for i := range db.readreplicas {
 		db.readreplicas[i].SetMaxOpenConns(n)
 	}
-}
-
-func (db *DB) readReplicaHealthCheck(ctx context.Context) error {
-	var healthyReadReplicas []*sql.DB
-	for i := range db.readreplicas {
-		if err := db.readreplicas[i].Ping(); err != nil {
-			healthyReadReplicas = append(db.readreplicas[:i], db.readreplicas[i+1:]...)
-
-			return err
-		}
-	}
-
-	fmt.Println("healthyReadReplicas : ", healthyReadReplicas)
-	return nil
-}
-
-// SafeReadReplicaSlice is safe to use concurrently.
-type SafeReadReplicaSlice struct {
-	mu                  sync.Mutex
-	healthyReadReplicas []*sql.DB
-}
-
-// Inc increments the counter for the given key.
-func (c *SafeReadReplicaSlice) Add(healthyReadReplica *sql.DB) {
-	c.mu.Lock()
-	// Lock so only one goroutine at a time can access the map c.v.
-	c.healthyReadReplicas = append(c.healthyReadReplicas, healthyReadReplica)
-	c.mu.Unlock()
-}
-
-// Value returns the current value of the counter for the given key.
-func (c *SafeReadReplicaSlice) Get(index int) *sql.DB {
-	c.mu.Lock()
-	// Lock so only one goroutine at a time can access the map c.v.
-	defer c.mu.Unlock()
-	return c.healthyReadReplicas[index]
-}
-
-func (c *SafeReadReplicaSlice) Remove(index int) {
-	c.mu.Lock()
-	// Lock so only one goroutine at a time can access the map c.v.
-	c.healthyReadReplicas = append(c.healthyReadReplicas[:index], c.healthyReadReplicas[index+1:]...)
-	c.mu.Unlock()
 }

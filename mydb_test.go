@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -25,4 +26,7 @@ func TestNew(t *testing.T) {
 	if err := db.PingContext(context.TODO()); err != nil {
 		t.Error(err)
 	}
+
+	time.Sleep(5 * time.Second)
+	db.replicaManager.StopHealthCheck()
 }

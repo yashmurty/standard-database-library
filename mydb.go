@@ -3,13 +3,16 @@ package mydb
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
 type DB struct {
 	master       *sql.DB
 	readreplicas []*sql.DB
-	count        int
+	count        int64
 }
 
 func New(master *sql.DB, readreplicas ...*sql.DB) *DB {
@@ -20,18 +23,19 @@ func New(master *sql.DB, readreplicas ...*sql.DB) *DB {
 }
 
 func (db *DB) readReplicaRoundRobin() *sql.DB {
-	db.count++
-	return db.readreplicas[db.count%len(db.readreplicas)]
+	// Increment the counter atomically to keep it thread-safe.
+	atomic.AddInt64(&db.count, 1)
+	return db.readreplicas[int(db.count)%len(db.readreplicas)]
 }
 
 func (db *DB) Ping() error {
 	if err := db.master.Ping(); err != nil {
-		panic(err)
+		return err
 	}
 
 	for i := range db.readreplicas {
 		if err := db.readreplicas[i].Ping(); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
@@ -40,12 +44,12 @@ func (db *DB) Ping() error {
 
 func (db *DB) PingContext(ctx context.Context) error {
 	if err := db.master.PingContext(ctx); err != nil {
-		panic(err)
+		return err
 	}
 
 	for i := range db.readreplicas {
 		if err := db.readreplicas[i].PingContext(ctx); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
@@ -119,4 +123,47 @@ func (db *DB) SetMaxOpenConns(n int) {
 	for i := range db.readreplicas {
 		db.readreplicas[i].SetMaxOpenConns(n)
 	}
+}
+
+func (db *DB) readReplicaHealthCheck(ctx context.Context) error {
+	var healthyReadReplicas []*sql.DB
+	for i := range db.readreplicas {
+		if err := db.readreplicas[i].Ping(); err != nil {
+			healthyReadReplicas = append(db.readreplicas[:i], db.readreplicas[i+1:]...)
+
+			return err
+		}
+	}
+
+	fmt.Println("healthyReadReplicas : ", healthyReadReplicas)
+	return nil
+}
+
+// SafeReadReplicaSlice is safe to use concurrently.
+type SafeReadReplicaSlice struct {
+	mu                  sync.Mutex
+	healthyReadReplicas []*sql.DB
+}
+
+// Inc increments the counter for the given key.
+func (c *SafeReadReplicaSlice) Add(healthyReadReplica *sql.DB) {
+	c.mu.Lock()
+	// Lock so only one goroutine at a time can access the map c.v.
+	c.healthyReadReplicas = append(c.healthyReadReplicas, healthyReadReplica)
+	c.mu.Unlock()
+}
+
+// Value returns the current value of the counter for the given key.
+func (c *SafeReadReplicaSlice) Get(index int) *sql.DB {
+	c.mu.Lock()
+	// Lock so only one goroutine at a time can access the map c.v.
+	defer c.mu.Unlock()
+	return c.healthyReadReplicas[index]
+}
+
+func (c *SafeReadReplicaSlice) Remove(index int) {
+	c.mu.Lock()
+	// Lock so only one goroutine at a time can access the map c.v.
+	c.healthyReadReplicas = append(c.healthyReadReplicas[:index], c.healthyReadReplicas[index+1:]...)
+	c.mu.Unlock()
 }

@@ -26,14 +26,14 @@ func main() {
     // Always use Query or QueryRow for SELECTS
     // Load distribution is round-robin only for now.
     var count int
-    err = db.QueryRow("SELECT COUNT(*) FROM sometable").Scan(&count)
+    err := db.QueryRow("SELECT COUNT(*) FROM sometable").Scan(&count)
     if err != nil {
         log.Fatal(err)
     }
 
     // Write queries are directed to the master with Exec.
     // Always use Exec for INSERTS, UPDATES
-    err = db.Exec("UPDATE sometable SET something = 1")
+    _, err := db.Exec("UPDATE sometable SET something = 1")
     if err != nil {
         log.Fatal(err)
     }

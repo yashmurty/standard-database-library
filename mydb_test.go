@@ -9,12 +9,26 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func TestNew(t *testing.T) {
+type MyDBTestData struct {
+	db *DB
+}
+
+func NewMyDBTestData() *MyDBTestData {
+	t := MyDBTestData{}
+
 	masterDB, _ := sql.Open("sqlite3", ":memory:")
 	readReplicaDB, _ := sql.Open("sqlite3", ":memory:")
 	readReplicaDB2, _ := sql.Open("sqlite3", ":memory:")
 
-	db := New(masterDB, readReplicaDB, readReplicaDB2)
+	t.db = New(masterDB, readReplicaDB, readReplicaDB2)
+
+	return &t
+}
+
+func TestNew(t *testing.T) {
+	db := NewMyDBTestData().db
+	defer db.Close()
+
 	if db == nil {
 		t.Errorf("New() error: db is nil")
 	}
@@ -22,11 +36,66 @@ func TestNew(t *testing.T) {
 	if err := db.Ping(); err != nil {
 		t.Error(err)
 	}
-
 	if err := db.PingContext(context.TODO()); err != nil {
 		t.Error(err)
 	}
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(3 * time.Second)
+	db.replicaManager.StopHealthCheck()
+}
+
+func TestQuery(t *testing.T) {
+	db := NewMyDBTestData().db
+	defer db.Close()
+
+	if _, err := db.Query(""); err != nil {
+		t.Error(err)
+	}
+	if _, err := db.QueryContext(context.TODO(), ""); err != nil {
+		t.Error(err)
+	}
+
+	db.replicaManager.StopHealthCheck()
+}
+
+func TestQueryRow(t *testing.T) {
+	db := NewMyDBTestData().db
+	defer db.Close()
+
+	if row := db.QueryRow(""); row == nil {
+		t.Error(row)
+	}
+	if row := db.QueryRowContext(context.TODO(), ""); row == nil {
+		t.Error(row)
+	}
+
+	db.replicaManager.StopHealthCheck()
+}
+
+func TestBegin(t *testing.T) {
+	db := NewMyDBTestData().db
+	defer db.Close()
+
+	if _, err := db.Begin(); err != nil {
+		t.Error(err)
+	}
+	if _, err := db.BeginTx(context.TODO(), nil); err != nil {
+		t.Error(err)
+	}
+
+	db.replicaManager.StopHealthCheck()
+}
+
+func TestExec(t *testing.T) {
+	db := NewMyDBTestData().db
+	defer db.Close()
+
+	if _, err := db.Exec(""); err != nil {
+		t.Error(err)
+	}
+	if _, err := db.ExecContext(context.TODO(), ""); err != nil {
+		t.Error(err)
+	}
+
 	db.replicaManager.StopHealthCheck()
 }

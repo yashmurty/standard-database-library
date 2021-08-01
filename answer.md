@@ -35,7 +35,7 @@ It will be triggered every X seconds.
 As a later TODO, we can also trigger this function when there is a connection timeout error from 
 any of the read-replicas.
 
-We return the master db if all read-replicas are down.
+We return the master db if all read-replicas are down. We introduce a flag `allowFallbackReadFromMaster`, which can be used to configure whether to fall back to master database for read or not.
 
 Note: 
   - 1. The Ping, Close, SetConnMaxLifetime, etc. functions call all the read-replicas even if they are down.

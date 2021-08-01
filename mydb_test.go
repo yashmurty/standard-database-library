@@ -3,6 +3,7 @@ package mydb
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 	"time"
 
@@ -42,6 +43,16 @@ func TestNew(t *testing.T) {
 
 	time.Sleep(3 * time.Second)
 	db.replicaManager.StopHealthCheck()
+}
+
+func ExampleNew() {
+	masterDB, _ := sql.Open("sqlite3", ":memory:")
+	readReplicaDB, _ := sql.Open("sqlite3", ":memory:")
+	readReplicaDB2, _ := sql.Open("sqlite3", ":memory:")
+
+	db := New(masterDB, readReplicaDB, readReplicaDB2)
+	fmt.Println(db.Ping())
+	// Output: nil
 }
 
 func TestQuery(t *testing.T) {
@@ -94,6 +105,20 @@ func TestExec(t *testing.T) {
 		t.Error(err)
 	}
 	if _, err := db.ExecContext(context.TODO(), ""); err != nil {
+		t.Error(err)
+	}
+
+	db.replicaManager.StopHealthCheck()
+}
+
+func TestPrepare(t *testing.T) {
+	db := NewMyDBTestData().db
+	defer db.Close()
+
+	if _, err := db.Prepare(""); err != nil {
+		t.Error(err)
+	}
+	if _, err := db.PrepareContext(context.TODO(), ""); err != nil {
 		t.Error(err)
 	}
 

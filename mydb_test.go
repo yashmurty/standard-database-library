@@ -49,7 +49,8 @@ func ExampleNew() {
 	readReplicaDB2, _ := sql.Open("sqlite3", ":memory:")
 
 	db := New(masterDB, readReplicaDB, readReplicaDB2)
-	fmt.Println(db.Ping())
+	err := db.Ping()
+	fmt.Println(err)
 	// Output: <nil>
 }
 

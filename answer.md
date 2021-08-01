@@ -1,4 +1,4 @@
-## answer.md
+## answer MD file
 
 ### Task 1
 
@@ -62,6 +62,7 @@ We have added comments to the code. All functions have a comment block which des
 - Modify the `Prepare` and `PrepareContext` functions to support read-replicas as well along with the master database. This should be done in such a fashion so that when `Exec` is called on these statements, it should go to the master database, and when `Query` or `QueryRow` is called, it should go to the read-replicas.
 - The list of healthy read-replicas is maintained via periodic health-checks. We can also trigger this function when there is a connection timeout error from any of the read-replicas. We should make sure that we do the health-check only for that particular read-replica instead of all the read-replicas.
 - We have not modified the `Ping`, `SetConnMaxLifetime`, `SetMaxIdleConns` and `SetMaxOpenConns` functions to use the healthy read-replicas only. Currently it is still using all the read-replicas provided during the `New` function configuration. So far only the `readReplicaRoundRobin` function is using the healthy read-replicas.
+- We wanted to modify the argument signature of `New` function, but were unsure if it is allowed or not as part of the assignment restrictions. For that reason some of the configuration values are left as hard-coded in the `New` function, but would ideally come from the function arguments.
 
 ### Extra Comments:
 - I really enjoyed this assignment. Thank you. 

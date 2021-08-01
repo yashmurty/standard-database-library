@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"testing"
-	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -41,7 +40,6 @@ func TestNew(t *testing.T) {
 		t.Error(err)
 	}
 
-	time.Sleep(3 * time.Second)
 	db.replicaManager.StopHealthCheck()
 }
 
@@ -52,7 +50,7 @@ func ExampleNew() {
 
 	db := New(masterDB, readReplicaDB, readReplicaDB2)
 	fmt.Println(db.Ping())
-	// Output: nil
+	// Output: <nil>
 }
 
 func TestQuery(t *testing.T) {

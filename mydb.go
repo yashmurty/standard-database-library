@@ -5,7 +5,6 @@ package mydb
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"sync/atomic"
 	"time"
 )
@@ -31,11 +30,9 @@ func New(master *sql.DB, readreplicas ...*sql.DB) *DB {
 		readreplicas: readreplicas,
 	}
 
-	fmt.Println("readreplicas : ", readreplicas)
-
-	// NOTE:  I wanted to pass this as a parameter to the constructor, but the interface_test.go file
+	// NOTE:  I wanted to pass this as a parameter to the constructor of `New`, but the interface_test.go file
 	// has an explicit message that it should not be modified. I might have misunderstood the restriction,
-	// but for now I will go ahead with this hard-coded value defined here.
+	// but for now I will go ahead with this hard-coded value defined here. :)
 	healthCheckIntervalInSeconds := 1
 	allowFallbackReadFromMaster := true
 

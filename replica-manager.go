@@ -2,7 +2,6 @@ package mydb
 
 import (
 	"database/sql"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -31,9 +30,6 @@ func (rM *ReplicaManager) Init(allReplicas []*sql.DB, healthCheckIntervalInSecon
 			case <-ticker.C:
 				var healthyReadReplicas []*sql.DB
 
-				fmt.Println("test tick ...")
-				fmt.Println("db.readreplicas : ", allReplicas)
-
 				for i := range allReplicas {
 					if err := allReplicas[i].Ping(); err != nil {
 						continue
@@ -43,8 +39,6 @@ func (rM *ReplicaManager) Init(allReplicas []*sql.DB, healthCheckIntervalInSecon
 
 				// Replace healthyReadReplicas with the new health checked slice.
 				rM.SetHealthyReplicas(healthyReadReplicas)
-				fmt.Println("healthyReadReplicas : ", healthyReadReplicas)
-				fmt.Println("rM.healthyReadReplicas : ", rM.healthyReadReplicas)
 
 			case <-rM.quitHealthCheckChan:
 				ticker.Stop()

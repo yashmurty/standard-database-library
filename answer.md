@@ -65,8 +65,23 @@ We have added comments to the code. All functions have a comment block which des
 
 ### Extra Comments:
 - I really enjoyed this assignment. Thank you. 
+  - In all I spent around 8-9 hours on this assignment. Half on Saturday and half on Sunday.
+
+- **Alternate approach 1: sync.RWMutex**  
+  Right now I have used `sync.Mutex` to share the healthy read-replicas list between goroutines.  
+  Since there is only one goroutine that writes to the `healthyReadReplicas` slice and others just read, it would be better to use `sync.RWMutex` instead of `sync.Mutex` at the moment.
+
+- **Alternate approach 2: channels (share memory by communicating)**  
+  Right now I have used `sync.Mutex` to share the healthy read-replicas list between goroutines.  
+  Since there is only one goroutine that writes to the `healthyReadReplicas` slice and others just read, we can maintain the list of healthy read-replicas in this single goroutine. The others can get the next healthy read-replica from this goroutine via channels.  
+  I have implemented something similar to this approach in my simple web-crawler implementation. I am sharing that for reference here.  
+  Here multiple goroutines crawl the website, but a single goroutine maintains the list of URLs that have already been crawled.  
+  https://github.com/yashmurty/go-web-crawler/blob/master/store/store.go#L47 
+
+
 - A year ago I was exploring AWS RDS Proxy. It's a service which would sit between our master database and our backend application. In AWS's own words:
   > It is a highly available database proxy for Amazon Relational Database Service (RDS) that makes applications more scalable, more resilient to database failures, and more secure.
   
-  I wrote an article about it on my personal blog, in case you would like to check it out. :)  
+  I wrote an article about it on my personal blog, highlighting why this is super useful in the serverless environment, where we have a high rate of open/close connection requests.  
+  In case you would like to check it out. :)  
 https://yashmurty.com/blog/relational-database-in-the-serverless-era/

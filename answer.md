@@ -24,7 +24,7 @@
 ### Task 3
 
 Modifications made for Task 1:
-1. The Ping and PingContext functions return the error instead of panicking.
+1. The Ping and PingContext functions now return the error value instead of panicking.
 2. The db.count variable is now a thread-safe variable. We have used `sync/atomic` package to make it thread-safe.
 
 -> Option 1: Modifying the `readReplicaRoundRobin` function to read only from healthy read-replicas.
@@ -40,3 +40,7 @@ We return the master db if all read-replicas are down. We introduce a flag `allo
 Note: 
   - 1. The Ping, Close, SetConnMaxLifetime, etc. functions call all the read-replicas even if they are down.
     I have not modified these to use the healthy read-replicas only. I have only modified the `readReplicaRoundRobin` function to consider downtime based on health-check.
+
+Future TODO:
+- Modify the `Prepare` and `PrepareContext` functions to support read-replicas as well along with the master database.
+- 

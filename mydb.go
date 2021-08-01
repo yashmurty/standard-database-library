@@ -1,3 +1,5 @@
+// Package mydb is a library that abstracts access to master and read-replica databases as a single
+// logical database mimicking the standard sql.DB APIs.
 package mydb
 
 import (
@@ -8,6 +10,9 @@ import (
 	"time"
 )
 
+// DB is a logical database with multiple underlying databases
+// forming a single master multiple read-replicas topology.
+// Reads and writes are automatically directed to the correct database.
 type DB struct {
 	master                      *sql.DB
 	readreplicas                []*sql.DB
@@ -16,6 +21,9 @@ type DB struct {
 	allowFallbackReadFromMaster bool
 }
 
+// New creates our logical database DB, allowing us to use the master and read-replicas.
+// It also initiates the replica manager goroutine, which performs a health-check on regular intervals
+// on the read-replicas and maintains a list of healthy read-replicas.
 func New(master *sql.DB, readreplicas ...*sql.DB) *DB {
 
 	db := &DB{
@@ -37,6 +45,9 @@ func New(master *sql.DB, readreplicas ...*sql.DB) *DB {
 	return db
 }
 
+// readReplicaRoundRobin returns the next read-replica in a round-robin fashion. It returns the value
+// from a list of health-checked read-replicas maintained by the replica manager.
+// It returns the master database if no read-replicas are healthy, in case we have enabled this configuration.
 func (db *DB) readReplicaRoundRobin() *sql.DB {
 	// Increment the counter atomically to keep it thread-safe.
 	atomic.AddInt64(&db.count, 1)

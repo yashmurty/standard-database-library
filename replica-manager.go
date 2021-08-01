@@ -7,14 +7,15 @@ import (
 	"time"
 )
 
-// ReplicaManager is safe to use concurrently.
+// ReplicaManager is a service which performs a health-check on regular intervals
+// on the read-replicas and maintains a list of healthy read-replicas.
 type ReplicaManager struct {
-	mu                           sync.Mutex
-	healthyReadReplicas          []*sql.DB
-	healthCheckIntervalInSeconds int
-	quitHealthCheckChan          chan struct{}
+	mu                  sync.Mutex
+	healthyReadReplicas []*sql.DB
+	quitHealthCheckChan chan struct{}
 }
 
+// Init is the entry point for the ReplicaManager service. It starts the service in a goroutine.
 func (rM *ReplicaManager) Init(allReplicas []*sql.DB, healthCheckIntervalInSeconds int) {
 	// Init the healthyReadReplicas assuming all the read-replicas are healthy.
 	// We do this since some queries might be made before the health check finishes running the first time.
@@ -53,25 +54,27 @@ func (rM *ReplicaManager) Init(allReplicas []*sql.DB, healthCheckIntervalInSecon
 
 }
 
-func (c *ReplicaManager) SetHealthyReplicas(healthyReadReplicas []*sql.DB) {
-	c.mu.Lock()
-	// Lock so only one goroutine at a time can access the map c.v.
-	c.healthyReadReplicas = nil
-	c.healthyReadReplicas = make([]*sql.DB, len(healthyReadReplicas))
+// SetHealthyReplicas sets the health-checked slice of read-replicas in a thread-safe manner.
+func (rM *ReplicaManager) SetHealthyReplicas(healthyReadReplicas []*sql.DB) {
+	rM.mu.Lock()
+	// Lock so only one goroutine at a time can access the healthyReadReplicas slice.
+	rM.healthyReadReplicas = nil
+	rM.healthyReadReplicas = make([]*sql.DB, len(healthyReadReplicas))
 
-	copy(c.healthyReadReplicas, healthyReadReplicas)
+	copy(rM.healthyReadReplicas, healthyReadReplicas)
 
-	c.mu.Unlock()
+	rM.mu.Unlock()
 }
 
-// Value returns the current value of the counter for the given key.
+// GetHealthyReplicas gets the health-checked slice of read-replicas in a thread-safe manner.
 func (c *ReplicaManager) GetHealthyReplicas() []*sql.DB {
 	c.mu.Lock()
-	// Lock so only one goroutine at a time can access the map c.v.
+	// Lock so only one goroutine at a time can access the healthyReadReplicas slice.
 	defer c.mu.Unlock()
 	return c.healthyReadReplicas
 }
 
+// StopHealthCheck stops the health check goroutine by sending a signal to the quit channel.
 func (rM *ReplicaManager) StopHealthCheck() {
 	close(rM.quitHealthCheckChan)
 }

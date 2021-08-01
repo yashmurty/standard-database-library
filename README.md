@@ -20,7 +20,7 @@ func main() {
     readReplicaDB, _ := sql.Open("mysql", "tcp://user:password@read1/dbname")
     readReplicaDB2, _ := sql.Open("mysql", "tcp://user:password@read2/dbname")
 
-    db = New(masterDB, readReplicaDB, readReplicaDB2)
+    db := New(masterDB, readReplicaDB, readReplicaDB2)
 
     // Read queries are directed to read-replicas with Query and QueryRow.
     // Always use Query or QueryRow for SELECTS
@@ -41,6 +41,6 @@ func main() {
 }
 ```
 
-### answer MD shortcut link
+### Answer MD shortcut link
 
 [Please click here.](./answer.md)

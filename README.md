@@ -10,7 +10,7 @@ import (
   "log"
 
   "github.com/xxx/mydb"
-  _ "github.com/go-sql-driver/mysql" // Any sql.DB works
+  _ "github.com/go-sql-driver/mysql"
 )
 
 func main() {
